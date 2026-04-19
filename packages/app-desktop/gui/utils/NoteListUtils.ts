@@ -108,6 +108,24 @@ export default class NoteListUtils {
 				new MenuItem(menuUtils.commandToStatefulMenuItem('duplicateNote', noteIds) as any),
 			);
 
+			menu.append(new MenuItem({ type: 'separator' }));
+
+			const noteIsEncrypted = noteIds.length === 1 && notes.find(n => !!n.is_encrypted);
+
+			if (!noteIsEncrypted) {
+				menu.append(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+					new MenuItem(menuUtils.commandToStatefulMenuItem('encryptNote', noteIds) as any),
+				);
+			} else {
+				menu.append(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+					new MenuItem(menuUtils.commandToStatefulMenuItem('decryptNote', noteIds) as any),
+				);
+			}
+
+			menu.append(new MenuItem({ type: 'separator' }));
+
 			menu.append(
 				new MenuItem(
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied

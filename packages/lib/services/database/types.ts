@@ -228,10 +228,12 @@ export interface NoteEntity {
   'conflict_original_id'?: string;
   'created_time'?: number;
   'deleted_time'?: number;
+  'encrypted_metadata'?: string;
   'encryption_applied'?: number;
   'encryption_cipher_text'?: string;
   'id'?: string | null;
   'is_conflict'?: number;
+  'is_encrypted'?: number;
   'is_shared'?: number;
   'is_todo'?: number;
   'latitude'?: number;
@@ -569,10 +571,12 @@ export const databaseSchema: DatabaseTables = {
 		conflict_original_id: { type: 'string' },
 		created_time: { type: 'number' },
 		deleted_time: { type: 'number' },
+		encrypted_metadata: { type: 'string' },
 		encryption_applied: { type: 'number' },
 		encryption_cipher_text: { type: 'string' },
 		id: { type: 'string' },
 		is_conflict: { type: 'number' },
+		is_encrypted: { type: 'number' },
 		is_shared: { type: 'number' },
 		is_todo: { type: 'number' },
 		latitude: { type: 'number' },

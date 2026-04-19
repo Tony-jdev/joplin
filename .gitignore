@@ -273,6 +273,7 @@ packages/app-desktop/gui/NoteEditor/NoteBody/TinyMCE/utils/useTabIndenter.js
 packages/app-desktop/gui/NoteEditor/NoteBody/TinyMCE/utils/useTextPatternsLookup.js
 packages/app-desktop/gui/NoteEditor/NoteBody/TinyMCE/utils/useWebViewApi.js
 packages/app-desktop/gui/NoteEditor/NoteEditor.js
+packages/app-desktop/gui/NoteEditor/NoteEncryptionLockScreen/NoteEncryptionLockScreen.js
 packages/app-desktop/gui/NoteEditor/NoteTitle/NoteTitleBar.js
 packages/app-desktop/gui/NoteEditor/StatusBar.js
 packages/app-desktop/gui/NoteEditor/WarningBanner/BannerContent.js
@@ -451,9 +452,11 @@ packages/app-desktop/gui/WindowCommandsAndDialogs/PluginDialogs.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/WindowCommandsAndDialogs.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/addProfile.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/commandPalette.js
+packages/app-desktop/gui/WindowCommandsAndDialogs/commands/decryptNote.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/deleteFolder.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/duplicateNote.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/editAlarm.js
+packages/app-desktop/gui/WindowCommandsAndDialogs/commands/encryptNote.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/exportPdf.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/globalRedo.js
 packages/app-desktop/gui/WindowCommandsAndDialogs/commands/globalUndo.js
@@ -1469,6 +1472,7 @@ packages/lib/services/database/migrations/46.js
 packages/lib/services/database/migrations/47.js
 packages/lib/services/database/migrations/48.js
 packages/lib/services/database/migrations/49.js
+packages/lib/services/database/migrations/50.js
 packages/lib/services/database/migrations/index.js
 packages/lib/services/database/sqlStringToLines.js
 packages/lib/services/database/types.js
@@ -1491,6 +1495,8 @@ packages/lib/services/e2ee/ppk/webCrypto/buildRsaCryptoProvider.js
 packages/lib/services/e2ee/types.js
 packages/lib/services/e2ee/utils.test.js
 packages/lib/services/e2ee/utils.js
+packages/lib/services/encryption/PerNoteEncryptionService.test.js
+packages/lib/services/encryption/PerNoteEncryptionService.js
 packages/lib/services/interop/InteropService.test.js
 packages/lib/services/interop/InteropService.js
 packages/lib/services/interop/InteropService_Exporter_Base.js

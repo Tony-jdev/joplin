@@ -10,6 +10,7 @@ import { NoteEntity } from '@joplin/lib/services/database/types';
 import useRenderedNote from './utils/useRenderedNote';
 import { Dispatch } from 'redux';
 import getNoteElementIdFromJoplinId from './utils/getNoteElementIdFromJoplinId';
+import { _ } from '@joplin/lib/locale';
 
 interface NoteItemProps {
 	dragIndex: number;
@@ -152,6 +153,8 @@ const NoteListItem = (props: NoteItemProps, ref: LegacyRef<HTMLDivElement>) => {
 		throw new Error('Unreachable');
 	}, [isActiveDragItem, isLastActiveDragItem, props.flow, props.itemSize]);
 
+	const isEncrypted = !!props.note.is_encrypted;
+
 	return <div
 		id={elementId}
 		ref={ref}
@@ -159,7 +162,8 @@ const NoteListItem = (props: NoteItemProps, ref: LegacyRef<HTMLDivElement>) => {
 		tabIndex={props.tabIndex}
 		className={className}
 		data-id={noteId}
-		style={{ height: props.itemSize.height }}
+		data-is-encrypted={isEncrypted ? 'true' : undefined}
+		style={{ height: props.itemSize.height, position: 'relative' }}
 		onContextMenu={props.onContextMenu}
 		onDragStart={props.onDragStart}
 		onDragOver={props.onDragOver}
@@ -170,7 +174,26 @@ const NoteListItem = (props: NoteItemProps, ref: LegacyRef<HTMLDivElement>) => {
 		role='option'
 	>
 		<div className="dragcursor" style={dragCursorStyle}></div>
+		{isEncrypted && (
+			<div
+				title={_('Encrypted note — enter password to view')}
+				style={lockBadgeStyle}
+				aria-label={_('Encrypted note')}
+			>
+				🔒
+			</div>
+		)}
 	</div>;
+};
+
+const lockBadgeStyle: React.CSSProperties = {
+	position: 'absolute',
+	top: 4,
+	right: 6,
+	fontSize: 12,
+	lineHeight: '1',
+	pointerEvents: 'none',
+	userSelect: 'none',
 };
 
 export default memo(forwardRef(NoteListItem));

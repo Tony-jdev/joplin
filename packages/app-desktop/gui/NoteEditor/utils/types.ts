@@ -176,6 +176,8 @@ export interface FormNote {
 	markup_language: number;
 	user_updated_time: number;
 	encryption_applied: number;
+	is_encrypted: number;
+	encrypted_metadata: string;
 	deleted_time: number;
 
 	hasChanged: boolean;
@@ -210,6 +212,11 @@ export interface FormNote {
 	// original CSS here. It's used in formNoteToNote to rebuild the note body.
 	// We can keep it here because we know TinyMCE will not modify it anyway.
 	originalCss: string;
+
+	// When is_encrypted === 1 and the note is unlocked for editing, this holds the most
+	// recently persisted ciphertext. formNoteToNote uses it as a fallback when the session
+	// password has expired so the DB always keeps valid ciphertext rather than plaintext.
+	lastSavedEncryptedBody?: string;
 }
 
 export function defaultFormNote(): FormNote {
@@ -228,6 +235,8 @@ export function defaultFormNote(): FormNote {
 		hasChanged: false,
 		user_updated_time: 0,
 		encryption_applied: 0,
+		is_encrypted: 0,
+		encrypted_metadata: '',
 	};
 }
 

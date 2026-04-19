@@ -189,6 +189,8 @@ export default function useFormNote(dependencies: HookDependencies) {
 			hasChanged: false,
 			user_updated_time: n.user_updated_time,
 			encryption_applied: n.encryption_applied,
+			is_encrypted: n.is_encrypted || 0,
+			encrypted_metadata: n.encrypted_metadata || '',
 		};
 
 		logger.debug('Initializing note state');

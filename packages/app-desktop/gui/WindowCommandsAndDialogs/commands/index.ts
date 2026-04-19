@@ -1,9 +1,11 @@
 // AUTO-GENERATED using `gulp buildScriptIndexes`
 import * as addProfile from './addProfile';
 import * as commandPalette from './commandPalette';
+import * as decryptNote from './decryptNote';
 import * as deleteFolder from './deleteFolder';
 import * as duplicateNote from './duplicateNote';
 import * as editAlarm from './editAlarm';
+import * as encryptNote from './encryptNote';
 import * as exportPdf from './exportPdf';
 import * as globalRedo from './globalRedo';
 import * as globalUndo from './globalUndo';
@@ -52,9 +54,11 @@ import * as toggleVisiblePanes from './toggleVisiblePanes';
 const index: any[] = [
 	addProfile,
 	commandPalette,
+	decryptNote,
 	deleteFolder,
 	duplicateNote,
 	editAlarm,
+	encryptNote,
 	exportPdf,
 	globalRedo,
 	globalUndo,

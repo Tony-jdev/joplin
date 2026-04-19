@@ -771,6 +771,12 @@
 	"Could not connect to plugin repository.": [
 		"Не вдалося підключитися до репозиторію плагінів."
 	],
+	"Could not decrypt note: %s": [
+		"Не вдалося розшифрувати нотатку: %s"
+	],
+	"Could not encrypt note \"%s\": %s": [
+		"Не вдалося зашифрувати нотатку «%s»: %s"
+	],
 	"Could not export notes: %s": [
 		"Не вдалося експортувати примітки: %s"
 	],
@@ -1335,11 +1341,20 @@
 	"Enabling encryption means *all* your notes and attachments are going to be re-synchronised and sent encrypted to the sync target.": [
 		"Увімкнення шифрування означає, що *всі* ваші нотатки та вкладені файли будуть повторно синхронізовані та надіслані в зашифрованому вигляді на ціль синхронізації."
 	],
+	"Encrypt note": [
+		"Зашифрувати нотатку"
+	],
 	"Encrypted": [
 		"Зашифровано"
 	],
 	"Encrypted items cannot be modified": [
 		"Зашифровані елементи не можуть бути змінені"
+	],
+	"Encrypted note": [
+		"Зашифрована нотатка"
+	],
+	"Encrypted note — enter password to view": [
+		"Зашифрована нотатка — введіть пароль для перегляду"
 	],
 	"Encryption": [
 		"Шифрування"
@@ -1373,6 +1388,15 @@
 	],
 	"Enter password": [
 		"Введіть пароль"
+	],
+	"Enter password to remove encryption": [
+		"Введіть пароль, щоб зняти шифрування"
+	],
+	"Enter the correct password to remove encryption.": [
+		"Введіть правильний пароль, щоб прибрати шифрування."
+	],
+	"Enter the password used to encrypt this note.": [
+		"Введіть пароль, яким було зашифровано цю нотатку."
 	],
 	"Entering selection mode": [
 		"Вхід у режим виділення"
@@ -1762,6 +1786,12 @@
 	],
 	"Incomplete to-do": [
 		"Не завершені завдання"
+	],
+	"Incorrect password": [
+		"Неправильний пароль"
+	],
+	"Incorrect password or corrupted note. Please try again.": [
+		"Неправильний пароль або пошкоджена нотатка. Спробуйте ще раз."
 	],
 	"Increase indent level": [
 		"Збільшити відступ"
@@ -2344,6 +2374,9 @@
 	"Note History": [
 		"Історія нотатки"
 	],
+	"Note is encrypted": [
+		"Нотатку зашифровано"
+	],
 	"Note is not a to-do: \"%s\"": [
 		"Нотатка не є завданням: “%s”"
 	],
@@ -2355,6 +2388,9 @@
 	],
 	"Note list style": [
 		"Стиль списку нотаток"
+	],
+	"Note password": [
+		"Пароль нотатки"
 	],
 	"Note properties": [
 		"Властивості нотатки"
@@ -2565,6 +2601,9 @@
 	],
 	"Please confirm that you would like to re-encrypt your complete database.": [
 		"Підтвердьте, що хочете повторно зашифрувати повну базу даних."
+	],
+	"Please enter a password to encrypt this note": [
+		"Введіть пароль для шифрування цієї нотатки"
 	],
 	"Please enter your password in the master key list below before upgrading the key.": [
 		"Будь ласка, введіть свій пароль у списку мастер ключів нижче перед оновленням ключа."
@@ -2820,6 +2859,9 @@
 	],
 	"Remove %s from share": [
 		"Видалити %s із спільного доступу"
+	],
+	"Remove note encryption": [
+		"Прибрати шифрування нотатки"
 	],
 	"Remove tag \"%s\" from all notes?": [
 		"Видалити тег “%s” з усіх нотаток?"
@@ -3695,6 +3737,9 @@
 	"This note is in HTML format. Convert it to Markdown to edit it more easily.": [
 		""
 	],
+	"This note is protected with a password. Enter the password used when encrypting it.": [
+		"Цю нотатку захищено паролем. Введіть пароль, який використовувався під час шифрування."
+	],
 	"This plugin doesn't support %s.": [
 		"Цей плагін не підтримує %s."
 	],
@@ -3886,6 +3931,12 @@
 	],
 	"Unknown platform": [
 		"Невідома платформа"
+	],
+	"Unlock": [
+		"Розблокувати"
+	],
+	"Unlocking…": [
+		"Розблокування…"
 	],
 	"Unordered list": [
 		"Unordered list"
