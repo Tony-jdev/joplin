@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { _ } from '@joplin/lib/locale';
 import { decryptNote, getSessionPassword, setSessionPassword } from '@joplin/lib/services/encryption/PerNoteEncryptionService';
 import { NoteEntity } from '@joplin/lib/services/database/types';
@@ -19,6 +19,14 @@ export default function NoteEncryptionLockScreen(props: Props) {
 	const onUnlockRef = useRef(props.onUnlock);
 	onUnlockRef.current = props.onUnlock;
 
+	const noteEntity = useMemo((): NoteEntity => ({
+		id: props.note.id,
+		title: props.note.title,
+		body: props.note.body,
+		is_encrypted: props.note.is_encrypted,
+		encrypted_metadata: props.note.encrypted_metadata || '',
+	}), [props.note.id, props.note.title, props.note.body, props.note.is_encrypted, props.note.encrypted_metadata]);
+
 	// Attempt silent auto-unlock using the last password entered this session.
 	// If the note was encrypted with a different password the attempt fails silently
 	// and the manual input form is revealed.
@@ -32,7 +40,7 @@ export default function NoteEncryptionLockScreen(props: Props) {
 		let cancelled = false;
 		void (async () => {
 			try {
-				const decrypted = await decryptNote(props.note, sessionPassword);
+				const decrypted = await decryptNote(noteEntity, sessionPassword);
 				if (cancelled) return;
 				onUnlockRef.current({ title: decrypted.title || '', body: decrypted.body || '' });
 			} catch {
@@ -44,7 +52,7 @@ export default function NoteEncryptionLockScreen(props: Props) {
 		return () => {
 			cancelled = true;
 		};
-	}, [props.note]);
+	}, [noteEntity]);
 
 	const onPasswordChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
 		setPassword(event.target.value);
@@ -56,7 +64,7 @@ export default function NoteEncryptionLockScreen(props: Props) {
 		setUnlocking(true);
 		setError('');
 		try {
-			const decrypted = await decryptNote(props.note, password);
+			const decrypted = await decryptNote(noteEntity, password);
 			setSessionPassword(password);
 			props.onUnlock({ title: decrypted.title || '', body: decrypted.body || '' });
 		} catch {
@@ -66,7 +74,7 @@ export default function NoteEncryptionLockScreen(props: Props) {
 		} finally {
 			setUnlocking(false);
 		}
-	}, [password, props.note, props.onUnlock]);
+	}, [password, noteEntity, props.onUnlock]);
 
 	const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
 		if (event.key === 'Enter') void onUnlock();

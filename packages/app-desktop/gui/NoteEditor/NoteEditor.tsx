@@ -59,8 +59,28 @@ import useConnectToEditorPlugin from './utils/useConnectToEditorPlugin';
 import getResourceBaseUrl from './utils/getResourceBaseUrl';
 import useInitialCursorLocation from './utils/useInitialCursorLocation';
 import NotePositionService, { EditorCursorLocations } from '@joplin/lib/services/NotePositionService';
+import { NoteEntity } from '@joplin/lib/services/database/types';
+import NoteEncryptionLockScreen from './NoteEncryptionLockScreen/NoteEncryptionLockScreen';
 
 const debounce = require('debounce');
+
+// StringV1 at-rest ciphertext (EncryptionService); used only to show the per-note lock UI.
+function noteBodyLooksLikeStringV1Ciphertext(body: string): boolean {
+	if (!body || body[0] !== '{') return false;
+	try {
+		const o = JSON.parse(body) as Record<string, unknown>;
+		return (
+			typeof o.salt === 'string' &&
+			o.salt.length > 0 &&
+			typeof o.iv === 'string' &&
+			o.iv.length > 0 &&
+			typeof o.ct === 'string' &&
+			o.ct.length > 0
+		);
+	} catch {
+		return false;
+	}
+}
 
 const logger = Logger.create('NoteEditor');
 
@@ -118,6 +138,15 @@ function NoteEditorContent(props: NoteEditorProps) {
 	setFormNoteRef.current = setFormNote;
 	const formNoteRef = useRef<FormNote>(formNote);
 	formNoteRef.current = { ...formNote };
+
+	const onPerNoteUnlock = useCallback((decrypted: { title: string; body: string }) => {
+		setFormNote(prev => ({
+			...prev,
+			title: decrypted.title,
+			body: decrypted.body,
+			lastSavedEncryptedBody: prev.body,
+		}));
+	}, [setFormNote]);
 
 	const formNoteFolder = useFolder({ folderId: formNote.parent_id });
 
@@ -648,6 +677,23 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	if (formNote.encryption_applied || !formNote.id || !effectiveNoteId) {
 		return renderNoNotes(styles.root);
+	}
+
+	if (formNote.is_encrypted === 1 && noteBodyLooksLikeStringV1Ciphertext(formNote.body)) {
+		const noteEntity: NoteEntity = {
+			id: formNote.id,
+			title: formNote.title,
+			body: formNote.body,
+			is_encrypted: 1,
+			encrypted_metadata: formNote.encrypted_metadata || '',
+		};
+		return (
+			<div style={styles.root} onDragOver={onDragOver} onDrop={onDrop} ref={containerRef}>
+				<div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+					<NoteEncryptionLockScreen note={noteEntity} onUnlock={onPerNoteUnlock} />
+				</div>
+			</div>
+		);
 	}
 
 	const theme = themeStyle(props.themeId);
