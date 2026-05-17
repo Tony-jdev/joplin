@@ -52,7 +52,19 @@ const useScheduleSaveCallbacks = (props: Props) => {
 					}
 					// After a successful re-encryption, track the new ciphertext as the fallback.
 					const lastSavedEncryptedBody = prev.is_encrypted === 1 && note.body ? note.body : prev.lastSavedEncryptedBody;
-					return { ...prev, user_updated_time: savedNote.user_updated_time, hasChanged: false, lastSavedEncryptedBody };
+					const newIsEncrypted = savedNote.is_encrypted || 0;
+					const newEncryptedMetadata = savedNote.encrypted_metadata || '';
+					// If the note became encrypted (e.g., via encrypt command), update body to show lock screen
+					const newBody = newIsEncrypted && !prev.is_encrypted ? savedNote.body : prev.body;
+					return {
+						...prev,
+						user_updated_time: savedNote.user_updated_time,
+						hasChanged: false,
+						lastSavedEncryptedBody,
+						is_encrypted: newIsEncrypted,
+						encrypted_metadata: newEncryptedMetadata,
+						body: newBody,
+					};
 				});
 
 				void ExternalEditWatcher.instance().updateNoteFile(savedNote);

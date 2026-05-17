@@ -17,6 +17,7 @@ const METADATA_VERSION = 1;
 // module-level variable.
 const WINDOW_KEY = '__joplinPerNoteEncPwd';
 const WINDOW_EXP_KEY = '__joplinPerNoteEncExp';
+const WINDOW_LAST_UNLOCKED_KEY = '__joplinPerNoteEncLastUnlocked';
 const CACHE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,6 +28,7 @@ const touchCache_ = (password: string) => {
 	if (global_[WINDOW_EXP_KEY]) clearTimeout(global_[WINDOW_EXP_KEY]);
 	global_[WINDOW_EXP_KEY] = setTimeout(() => {
 		global_[WINDOW_KEY] = null;
+		global_[WINDOW_LAST_UNLOCKED_KEY] = null;
 		global_[WINDOW_EXP_KEY] = null;
 	}, CACHE_TIMEOUT_MS);
 };
@@ -34,6 +36,7 @@ const touchCache_ = (password: string) => {
 // Clears the in-memory session cache (e.g. on app lock or user request).
 export const clearPasswordCache = () => {
 	global_[WINDOW_KEY] = null;
+	global_[WINDOW_LAST_UNLOCKED_KEY] = null;
 	if (global_[WINDOW_EXP_KEY]) {
 		clearTimeout(global_[WINDOW_EXP_KEY]);
 		global_[WINDOW_EXP_KEY] = null;
@@ -49,6 +52,17 @@ export const getSessionPassword = (): string | null => {
 // Records the most recently used password for the current session.
 export const setSessionPassword = (password: string): void => {
 	touchCache_(password);
+};
+
+// Returns the ID of the last unlocked note, or null if none.
+export const getLastUnlockedNoteId = (): string | null => {
+	const id = global_[WINDOW_LAST_UNLOCKED_KEY] as string | null | undefined;
+	return id ?? null;
+};
+
+// Records the ID of the most recently unlocked note.
+export const setLastUnlockedNoteId = (noteId: string): void => {
+	global_[WINDOW_LAST_UNLOCKED_KEY] = noteId;
 };
 
 export const isNoteEncrypted = (note: NoteEntity): boolean => {

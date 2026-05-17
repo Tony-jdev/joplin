@@ -21,11 +21,13 @@ interface Props {
 	onClose: Function;
 	inputType: string;
 	description: string;
+	error: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	answer?: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	autocomplete: any;
 	label: string;
+	showLabel?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -198,6 +200,7 @@ export default class PromptDialog extends React.Component<Props, any> {
 		};
 
 		this.styles_.desc = { ...theme.textStyle, marginTop: 10 };
+		this.styles_.error = { ...theme.textStyle, marginTop: 10, color: theme.colorError };
 
 		return this.styles_;
 	}
@@ -264,7 +267,17 @@ export default class PromptDialog extends React.Component<Props, any> {
 			}
 		};
 
-		const descComp = this.props.description ? <div style={styles.desc}>{this.props.description}</div> : null;
+		const isPasswordPrompt = this.props.inputType === 'password';
+		let normalizedDescription = isPasswordPrompt && this.props.description === _('Enter the correct password to remove encryption.')
+			? _('Enter the password used to encrypt this note.')
+			: this.props.description;
+		if (isPasswordPrompt && !normalizedDescription) {
+			normalizedDescription = this.props.label || '';
+		}
+		const promptErrorText = this.props.error || '';
+		const descComp = normalizedDescription ? <div style={styles.desc}>{normalizedDescription}</div> : null;
+		const errorComp = promptErrorText ? <div style={styles.error}>{promptErrorText}</div> : null;
+		const showLabel = isPasswordPrompt ? false : (this.props.showLabel ?? true);
 
 		let inputComp = null;
 
@@ -362,9 +375,10 @@ export default class PromptDialog extends React.Component<Props, any> {
 
 		return (
 			<Dialog className='prompt-dialog' contentStyle={styles.dialog} onCancel={() => onClose(false, 'cancel')}>
-				<label style={styles.label}>{this.props.label ? this.props.label : ''}</label>
+				{showLabel ? <label style={styles.label}>{this.props.label ? this.props.label : ''}</label> : null}
 				<div style={{ display: 'inline-block', color: 'black', backgroundColor: theme.backgroundColor }}>
 					{inputComp}
+					{errorComp}
 					{descComp}
 				</div>
 				<div style={{ textAlign: 'right', marginTop: 10 }}>{buttonComps}</div>

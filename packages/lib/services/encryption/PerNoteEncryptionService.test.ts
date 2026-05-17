@@ -1,4 +1,7 @@
-import { setupDatabaseAndSynchronizer, switchClient } from '../../testing/test-utils';
+import Folder from '../../models/Folder';
+import Note from '../../models/Note';
+import { setupAndEnableEncryption } from '../e2ee/utils';
+import { encryptionService, loadEncryptionMasterKey, setupDatabaseAndSynchronizer, switchClient } from '../../testing/test-utils';
 import EncryptionService from '../e2ee/EncryptionService';
 import {
 	encryptNote,
@@ -9,6 +12,8 @@ import {
 	clearPasswordCache,
 	getSessionPassword,
 	setSessionPassword,
+	getLastUnlockedNoteId,
+	setLastUnlockedNoteId,
 } from './PerNoteEncryptionService';
 import { NoteEntity } from '../database/types';
 
@@ -25,7 +30,11 @@ describe('PerNoteEncryptionService', () => {
 	beforeEach(async () => {
 		await setupDatabaseAndSynchronizer(1);
 		await switchClient(1);
-		EncryptionService.instance_ = new EncryptionService();
+		EncryptionService.instance_ = encryptionService();
+		clearPasswordCache();
+	});
+
+	afterEach(() => {
 		clearPasswordCache();
 	});
 
@@ -104,6 +113,18 @@ describe('PerNoteEncryptionService', () => {
 		expect(getSessionPassword()).toBeNull();
 	});
 
+	it('clearPasswordCache resets the last unlocked note ID', () => {
+		setSessionPassword('temporary');
+		setLastUnlockedNoteId('note-id');
+
+		expect(getLastUnlockedNoteId()).toBe('note-id');
+
+		clearPasswordCache();
+
+		expect(getSessionPassword()).toBeNull();
+		expect(getLastUnlockedNoteId()).toBeNull();
+	});
+
 	it('each note can use a different password independently', async () => {
 		const noteA = makeNote({ id: 'aaa', body: 'body A' });
 		const noteB = makeNote({ id: 'bbb', body: 'body B' });
@@ -139,5 +160,41 @@ describe('PerNoteEncryptionService', () => {
 
 		expect(decrypted.title).toBe(note.title);
 		expect(decrypted.body).toBe(note.body);
+	});
+
+	it('should keep per-note encrypted content readable after Joplin E2EE serialization', async () => {
+		const masterKey = await loadEncryptionMasterKey();
+		await setupAndEnableEncryption(EncryptionService.instance(), masterKey, '123456');
+
+		const folder = await Folder.save({ title: 'E2EE folder' });
+		const note = await Note.save({
+			title: 'Per-note encrypted note',
+			body: 'Body protected by the note password',
+			parent_id: folder.id,
+		});
+
+		const perNoteEncrypted = await encryptNote(note, 'note-password');
+		const savedPerNoteEncrypted = await Note.save(perNoteEncrypted);
+
+		const serialized = await Note.serializeForSync(savedPerNoteEncrypted);
+		const encryptedForSync = Note.filter(await Note.unserialize(serialized));
+
+		expect(encryptedForSync.encryption_applied).toBe(1);
+		expect(encryptedForSync.encryption_cipher_text).toBeTruthy();
+		expect(encryptedForSync.body || '').toBe('');
+
+		const savedE2eeEncrypted = await Note.save(encryptedForSync);
+		const afterE2eeDecrypt = await Note.decrypt(savedE2eeEncrypted);
+
+		expect(afterE2eeDecrypt.title).toBe(note.title);
+		expect(afterE2eeDecrypt.is_encrypted).toBe(1);
+		expect(afterE2eeDecrypt.encrypted_metadata).toBe(savedPerNoteEncrypted.encrypted_metadata);
+		expect(afterE2eeDecrypt.body).toBe(savedPerNoteEncrypted.body);
+		expect(afterE2eeDecrypt.body).not.toBe(note.body);
+
+		const fullyDecrypted = await decryptNote(afterE2eeDecrypt, 'note-password');
+
+		expect(fullyDecrypted.title).toBe(note.title);
+		expect(fullyDecrypted.body).toBe(note.body);
 	});
 });

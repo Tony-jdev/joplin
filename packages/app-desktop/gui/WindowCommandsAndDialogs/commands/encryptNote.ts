@@ -22,6 +22,9 @@ export const runtime = (comp: WindowControl): CommandRuntime => {
 
 			const password = await comp.showPasswordInput(
 				_('Please enter a password to encrypt this note'),
+				_('Please enter a password to encrypt this note.'),
+				undefined,
+				false,
 			);
 			if (!password) return;
 

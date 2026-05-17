@@ -21,7 +21,7 @@ interface PromptOptions<T> {
 export interface WindowControl {
 	setState: (update: Partial<DialogState>)=> void;
 	showPrompt: <T>(options: PromptOptions<T>)=> Promise<T>;
-	showPasswordInput: (label: string, description?: string)=> Promise<string|null>;
+	showPasswordInput: (label: string, description?: string, error?: string, showLabel?: boolean)=> Promise<string|null>;
 	printTo: PrintCallback;
 	announcePanelVisibility(panelName: string, visible: boolean): void;
 	getFocusedDocument(): Document;
@@ -69,12 +69,14 @@ const useWindowControl = (setDialogState: OnSetDialogState, onPrint: PrintCallba
 					});
 				});
 			},
-			showPasswordInput: (label: string, description?: string) => {
+			showPasswordInput: (label: string, description?: string, error?: string, showLabel = true) => {
 				return new Promise<string|null>((resolve) => {
 					control.setState({
 						promptOptions: {
 							label,
 							...(description ? { description } : {}),
+							...(error ? { error } : {}),
+							showLabel,
 							inputType: 'password',
 							value: '',
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Using existing promptOptions shape
