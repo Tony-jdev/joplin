@@ -24,6 +24,8 @@ export interface DialogState {
 		inputType?: string;
 		buttons?: unknown[];
 		description?: string;
+		error?: string;
+		showLabel?: boolean;
 		label?: string;
 		value?: string;
 		autocomplete?: unknown;

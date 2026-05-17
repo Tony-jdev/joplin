@@ -172,6 +172,8 @@ const WindowCommandsAndDialogs: React.FC<Props> = props => {
 			onClose={promptOnClose}
 			label={promptOptions ? promptOptions.label : ''}
 			description={promptOptions ? promptOptions.description : null}
+			error={promptOptions ? promptOptions.error : null}
+			showLabel={promptOptions ? promptOptions.showLabel : true}
 			visible={!!promptOptions}
 			buttons={promptOptions && 'buttons' in promptOptions ? promptOptions.buttons : null}
 			inputType={promptOptions && 'inputType' in promptOptions ? promptOptions.inputType : null}

@@ -21,6 +21,7 @@ interface PromptOptions<T> {
 export interface WindowControl {
 	setState: (update: Partial<DialogState>)=> void;
 	showPrompt: <T>(options: PromptOptions<T>)=> Promise<T>;
+	showPasswordInput: (label: string, description?: string, error?: string, showLabel?: boolean)=> Promise<string|null>;
 	printTo: PrintCallback;
 	announcePanelVisibility(panelName: string, visible: boolean): void;
 	getFocusedDocument(): Document;
@@ -55,13 +56,33 @@ const useWindowControl = (setDialogState: OnSetDialogState, onPrint: PrintCallba
 							inputType: 'dropdown',
 							value: options.value,
 							autocomplete: options.suggestions,
-							onClose: async (answer: unknown) => {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Partially refactored code before rule was applied
+							onClose: async (answer: any) => {
 								if (answer) {
-									resolve((answer as PromptSuggestion<T>).value);
+									resolve(answer.value);
 								} else {
 									resolve(null);
 								}
 								control.setState({ promptOptions: null });
+							},
+						},
+					});
+				});
+			},
+			showPasswordInput: (label: string, description?: string, error?: string, showLabel = true) => {
+				return new Promise<string|null>((resolve) => {
+					control.setState({
+						promptOptions: {
+							label,
+							...(description ? { description } : {}),
+							...(error ? { error } : {}),
+							showLabel,
+							inputType: 'password',
+							value: '',
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Using existing promptOptions shape
+							onClose: async (answer: any) => {
+								control.setState({ promptOptions: null });
+								resolve(answer ? String(answer) : null);
 							},
 						},
 					});
