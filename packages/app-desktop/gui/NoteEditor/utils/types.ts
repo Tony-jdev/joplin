@@ -1,5 +1,4 @@
 import AsyncActionQueue from '@joplin/lib/AsyncActionQueue';
-import { NoteEntity, TagEntity } from '@joplin/lib/services/database/types';
 import { ToolbarButtonInfo, ToolbarItem } from '@joplin/lib/services/commands/ToolbarButtonUtils';
 import { PluginHtmlContents, PluginStates } from '@joplin/lib/services/plugins/reducer';
 import { MarkupLanguage } from '@joplin/renderer';
@@ -40,20 +39,25 @@ export interface NoteEditorProps {
 	dispatch: Dispatch;
 	selectedNoteIds: string[];
 	selectedFolderId: string;
-	notes: NoteEntity[];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	notes: any[];
 	watchedNoteFiles: string[];
 	isProvisional: boolean;
-	editorNoteStatuses: Record<string, string>;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	editorNoteStatuses: any;
 	notesParentType: string;
-	selectedNoteTags: TagEntity[];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	selectedNoteTags: any[];
 	selectedNoteHash: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- searches: any[] is the shape in lib's reducer; tightening requires updating the reducer first
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	searches: any[];
 	selectedSearchId: string;
 	customCss: string;
 	noteVisiblePanes: string[];
-	watchedResources: Record<string, unknown>;
-	highlightedWords: string[];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	watchedResources: any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	highlightedWords: any[];
 	tabMovesFocus: boolean;
 	plugins: PluginStates;
 	toolbarButtonInfos: ToolbarItem[];
@@ -72,7 +76,6 @@ export interface NoteEditorProps {
 	startupPluginsLoaded: boolean;
 	enableHtmlToMarkdownBanner: boolean;
 	showNoteLinkIcon: boolean;
-	whiteboardForceMarkdown: Record<string, boolean>;
 }
 
 export interface NoteBodyEditorRef {
@@ -91,13 +94,14 @@ export type OnCursorMotion = (event: EditorCursorLocations)=> void;
 
 export interface MessageEvent {
 	channel: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Heterogeneous webview IPC args (resource shapes, command names, …); narrowing forces per-channel discriminated unions
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Partially refactored old code before rule was applied
 	args?: any[];
 }
 export type OnMessage = (event: MessageEvent)=> void;
 
 export interface NoteBodyEditorProps {
-	style: React.CSSProperties;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	style: any;
 	themeId: number;
 
 	// When this is true it means the note must always be rendered using a white
@@ -115,7 +119,8 @@ export interface NoteBodyEditorProps {
 	contentOriginalCss: string;
 	initialCursorLocation: EditorCursorLocations;
 	onChange(event: OnChangeEvent): void;
-	onWillChange(event: { changeId: number }): void;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	onWillChange(event: any): void;
 	onMessage: OnMessage;
 	onScroll(event: { percent: number }): void;
 	onCursorMotion: OnCursorMotion;
@@ -124,11 +129,13 @@ export interface NoteBodyEditorProps {
 	allAssets: (markupLanguage: MarkupLanguage, options: AllAssetsOptions)=> Promise<RenderResultPluginAsset[]>;
 	disabled: boolean;
 	dispatch: Dispatch;
-	noteToolbar: React.ReactNode;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	noteToolbar: any;
 	setLocalSearchResultCount(count: number): void;
 	setLocalSearch(search: string): void;
 	setShowLocalSearch(show: boolean): void;
 	useLocalSearch: boolean;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	searchMarkers: SearchMarkers;
 	visiblePanes: string[];
 	keyboardMode: string;
@@ -164,11 +171,13 @@ export interface FormNote {
 	parent_id: string;
 	is_todo: number;
 	is_conflict?: number;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor-specific content shape (e.g. TinyMCE retains the raw editor object here); per-editor type
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	bodyEditorContent?: any;
 	markup_language: number;
 	user_updated_time: number;
 	encryption_applied: number;
+	is_encrypted: number;
+	encrypted_metadata: string;
 	deleted_time: number;
 
 	hasChanged: boolean;
@@ -203,6 +212,11 @@ export interface FormNote {
 	// original CSS here. It's used in formNoteToNote to rebuild the note body.
 	// We can keep it here because we know TinyMCE will not modify it anyway.
 	originalCss: string;
+
+	// When is_encrypted === 1 and the note is unlocked for editing, this holds the most
+	// recently persisted ciphertext. formNoteToNote uses it as a fallback when the session
+	// password has expired so the DB always keeps valid ciphertext rather than plaintext.
+	lastSavedEncryptedBody?: string;
 }
 
 export function defaultFormNote(): FormNote {
@@ -221,6 +235,8 @@ export function defaultFormNote(): FormNote {
 		hasChanged: false,
 		user_updated_time: 0,
 		encryption_applied: 0,
+		is_encrypted: 0,
+		encrypted_metadata: '',
 	};
 }
 
@@ -241,29 +257,29 @@ export enum ScrollOptionTypes {
 
 export interface ScrollOptions {
 	type: ScrollOptionTypes;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Heterogeneous value (line number for Percent, hash string for Hash); narrowing forces casts at every dispatch site
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	value: any;
 }
 
 export interface OnChangeEvent {
 	changeId: number;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor body content; TinyMCE emits an editor object here, CodeMirror emits a string
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	content: any;
 }
 
 export interface EditorCommand {
 	name: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor commands are heterogeneous (string, drop-shape, scroll-shape, …); a tightening would require per-command discriminated unions
-	value?: any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	value: any;
 }
 
 export interface CommandValue {
 	name: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Should be an array for CodeMirror or an object for TinyMCE; dispatched dynamically by name
-	args?: any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	args?: any; // Should be an array for CodeMirror or an object for TinyMCE
 	ui?: boolean; // For TinyMCE only
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- For TinyMCE only — heterogeneous per command
-	value?: any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	value?: any; // For TinyMCE only
 }
 
 type DropCommandBase = {

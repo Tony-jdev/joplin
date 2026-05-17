@@ -2,6 +2,7 @@
 import * as addNoteToWhiteboard from './addNoteToWhiteboard';
 import * as addProfile from './addProfile';
 import * as commandPalette from './commandPalette';
+import * as decryptNote from './decryptNote';
 import * as deleteFolder from './deleteFolder';
 import * as duplicateNote from './duplicateNote';
 import * as editAlarm from './editAlarm';
@@ -57,6 +58,7 @@ const index: any[] = [
 	addNoteToWhiteboard,
 	addProfile,
 	commandPalette,
+	decryptNote,
 	deleteFolder,
 	duplicateNote,
 	editAlarm,

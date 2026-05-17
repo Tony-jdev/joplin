@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback, useRef, useMemo, useContext } from 'react';
-import { NoteEntity } from '@joplin/lib/services/database/types';
 import TinyMCE from './NoteBody/TinyMCE/TinyMCE';
 import { connect } from 'react-redux';
 import MultiNoteActions from '../MultiNoteActions';
@@ -43,8 +42,6 @@ import ItemChange from '@joplin/lib/models/ItemChange';
 import PlainEditor from './NoteBody/PlainEditor/PlainEditor';
 import CodeMirror6 from './NoteBody/CodeMirror/v6/CodeMirror';
 import CodeMirror5 from './NoteBody/CodeMirror/v5/CodeMirror';
-import WhiteboardEditor from './NoteBody/WhiteboardEditor/WhiteboardEditor';
-import { hasWhiteboardFence } from '@joplin/lib/services/whiteboard/parse';
 import { openItemById } from './utils/contextMenu';
 import { MarkupLanguage } from '@joplin/renderer';
 import useScrollWhenReadyOptions from './utils/useScrollWhenReadyOptions';
@@ -62,8 +59,28 @@ import useConnectToEditorPlugin from './utils/useConnectToEditorPlugin';
 import getResourceBaseUrl from './utils/getResourceBaseUrl';
 import useInitialCursorLocation from './utils/useInitialCursorLocation';
 import NotePositionService, { EditorCursorLocations } from '@joplin/lib/services/NotePositionService';
+import { NoteEntity } from '@joplin/lib/services/database/types';
+import NoteEncryptionLockScreen from './NoteEncryptionLockScreen/NoteEncryptionLockScreen';
 
 const debounce = require('debounce');
+
+// StringV1 at-rest ciphertext (EncryptionService); used only to show the per-note lock UI.
+function noteBodyLooksLikeStringV1Ciphertext(body: string): boolean {
+	if (!body || body[0] !== '{') return false;
+	try {
+		const o = JSON.parse(body) as Record<string, unknown>;
+		return (
+			typeof o.salt === 'string' &&
+			o.salt.length > 0 &&
+			typeof o.iv === 'string' &&
+			o.iv.length > 0 &&
+			typeof o.ct === 'string' &&
+			o.ct.length > 0
+		);
+	} catch {
+		return false;
+	}
+}
 
 const logger = Logger.create('NoteEditor');
 
@@ -121,6 +138,15 @@ function NoteEditorContent(props: NoteEditorProps) {
 	setFormNoteRef.current = setFormNote;
 	const formNoteRef = useRef<FormNote>(formNote);
 	formNoteRef.current = { ...formNote };
+
+	const onPerNoteUnlock = useCallback((decrypted: { title: string; body: string }) => {
+		setFormNote(prev => ({
+			...prev,
+			title: decrypted.title,
+			body: decrypted.body,
+			lastSavedEncryptedBody: prev.body,
+		}));
+	}, [setFormNote]);
 
 	const formNoteFolder = useFolder({ folderId: formNote.parent_id });
 
@@ -209,7 +235,8 @@ function NoteEditorContent(props: NoteEditorProps) {
 		props.onTitleChange?.(formNote.title);
 	}, [formNote.title, props.onTitleChange]);
 
-	const onFieldChange = useCallback(async (field: string, value: string, changeId = 0) => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	const onFieldChange = useCallback(async (field: string, value: any, changeId = 0) => {
 		if (!isMountedRef.current) {
 			// When the component is unmounted, various actions can happen which can
 			// trigger onChange events, for example the textarea might be cleared.
@@ -264,7 +291,8 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	const onBodyChange = useCallback((event: OnChangeEvent) => onFieldChange('body', event.content, event.changeId), [onFieldChange]);
 
-	const onTitleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => onFieldChange('title', event.target.value), [onFieldChange]);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	const onTitleChange = useCallback((event: any) => onFieldChange('title', event.target.value), [onFieldChange]);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	useWindowCommandHandler({
@@ -313,7 +341,8 @@ function NoteEditorContent(props: NoteEditorProps) {
 		}
 	}, [formNote.id, props.syncUserId, shareCache]);
 
-	const onBodyWillChange = useCallback((event: { changeId: number }) => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	const onBodyWillChange = useCallback((event: any) => {
 		handleProvisionalFlag();
 
 		setFormNote(prev => {
@@ -341,7 +370,8 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	useResourceUnwatcher({ noteId: formNote.id, windowId });
 
-	const externalEditWatcher_noteChange = useCallback((event: { id: string; note: NoteEntity }) => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	const externalEditWatcher_noteChange = useCallback((event: any) => {
 		if (event.id === formNote.id) {
 			const newFormNote = {
 				...formNote,
@@ -353,16 +383,17 @@ function NoteEditorContent(props: NoteEditorProps) {
 		}
 	}, [formNote, setFormNote]);
 
-	const onNotePropertyChange = useCallback((event: { note: NoteEntity }) => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+	const onNotePropertyChange = useCallback((event: any) => {
 		setFormNote(formNote => {
 			if (formNote.id !== event.note.id) return formNote;
 
 			const newFormNote: FormNote = { ...formNote };
 
-			const noteAsRecord = event.note as unknown as Record<string, unknown>;
-			for (const key in noteAsRecord) {
+			for (const key in event.note) {
 				if (key === 'id') continue;
-				(newFormNote as unknown as Record<string, unknown>)[key] = noteAsRecord[key];
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+				(newFormNote as any)[key] = event.note[key];
 			}
 
 			return newFormNote;
@@ -477,23 +508,7 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	let editor = null;
 
-	const noteHasWhiteboardFence = markupLanguage === MarkupLanguage.Markdown
-		&& hasWhiteboardFence(formNote.body);
-
-	const useWhiteboardEditor = builtInEditorVisible
-		&& noteHasWhiteboardFence
-		&& !props.whiteboardForceMarkdown?.[formNote.id];
-
-	// Mirror "active note is a whiteboard" to redux so the NoteToolbar can
-	// show the editor toggle. We can't compute this from the redux note list
-	// because note bodies aren't in the preview fields.
-	useEffect(() => {
-		props.dispatch({ type: 'WHITEBOARD_ACTIVE_NOTE_SET', value: noteHasWhiteboardFence });
-	}, [noteHasWhiteboardFence, props.dispatch]);
-
-	if (useWhiteboardEditor) {
-		editor = <WhiteboardEditor {...editorProps}/>;
-	} else if (builtInEditorVisible) {
+	if (builtInEditorVisible) {
 		if (props.bodyEditor === 'TinyMCE') {
 			editor = <TinyMCE {...editorProps}/>;
 		} else if (props.bodyEditor === 'PlainText') {
@@ -591,7 +606,7 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	function renderResourceWatchingNotification() {
 		if (!Object.keys(props.watchedResources).length) return null;
-		const resourceTitles = Object.keys(props.watchedResources).map(id => (props.watchedResources[id] as { title: string }).title);
+		const resourceTitles = Object.keys(props.watchedResources).map(id => props.watchedResources[id].title);
 		return (
 			<div style={styles.resourceWatchBanner}>
 				<p style={styles.resourceWatchBannerLine}>{_('The following attachments are being watched for changes:')} <strong>{resourceTitles.join(', ')}</strong></p>
@@ -662,6 +677,23 @@ function NoteEditorContent(props: NoteEditorProps) {
 
 	if (formNote.encryption_applied || !formNote.id || !effectiveNoteId) {
 		return renderNoNotes(styles.root);
+	}
+
+	if (formNote.is_encrypted === 1 && noteBodyLooksLikeStringV1Ciphertext(formNote.body)) {
+		const noteEntity: NoteEntity = {
+			id: formNote.id,
+			title: formNote.title,
+			body: formNote.body,
+			is_encrypted: 1,
+			encrypted_metadata: formNote.encrypted_metadata || '',
+		};
+		return (
+			<div style={styles.root} onDragOver={onDragOver} onDrop={onDrop} ref={containerRef}>
+				<div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+					<NoteEncryptionLockScreen note={noteEntity} onUnlock={onPerNoteUnlock} />
+				</div>
+			</div>
+		);
 	}
 
 	const theme = themeStyle(props.themeId);
@@ -783,7 +815,6 @@ const mapStateToProps = (state: AppState, ownProps: ConnectProps) => {
 		enableHtmlToMarkdownBanner: state.settings['editor.enableHtmlToMarkdownBanner'],
 		enableInEditorRendering: state.settings['editor.inlineRendering'],
 		showNoteLinkIcon: state.settings['notes.showNoteLinkIcon'],
-		whiteboardForceMarkdown: windowState.whiteboardForceMarkdown ?? {},
 	};
 };
 
