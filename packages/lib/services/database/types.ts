@@ -287,6 +287,7 @@ export interface ResourceEntity {
   'file_extension'?: string;
   'filename'?: string;
   'id'?: string | null;
+  'is_per_note_encrypted'?: number;
   'is_shared'?: number;
   'master_key_id'?: string;
   'mime'?: string;
@@ -295,6 +296,7 @@ export interface ResourceEntity {
   'ocr_error'?: string;
   'ocr_status'?: number;
   'ocr_text'?: string;
+  'per_note_encrypted_metadata'?: string;
   'share_id'?: string;
   'size'?: number;
   'title'?: string;
@@ -509,6 +511,7 @@ export const databaseSchema: DatabaseTables = {
 		file_extension: { type: 'string' },
 		filename: { type: 'string' },
 		id: { type: 'string' },
+		is_per_note_encrypted: { type: 'number' },
 		is_shared: { type: 'number' },
 		master_key_id: { type: 'string' },
 		mime: { type: 'string' },
@@ -517,6 +520,7 @@ export const databaseSchema: DatabaseTables = {
 		ocr_error: { type: 'string' },
 		ocr_status: { type: 'number' },
 		ocr_text: { type: 'string' },
+		per_note_encrypted_metadata: { type: 'string' },
 		share_id: { type: 'string' },
 		size: { type: 'number' },
 		title: { type: 'string' },

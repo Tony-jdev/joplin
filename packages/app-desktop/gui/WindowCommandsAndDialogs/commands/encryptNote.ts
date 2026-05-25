@@ -3,6 +3,8 @@ import { _ } from '@joplin/lib/locale';
 import Note from '@joplin/lib/models/Note';
 import {
 	encryptNote,
+	encryptLinkedResourcesForNote,
+	ensureExclusiveResourcesForNote,
 	isNoteEncrypted,
 	setSessionPassword,
 } from '@joplin/lib/services/encryption/PerNoteEncryptionService';
@@ -32,10 +34,17 @@ export const runtime = (comp: WindowControl): CommandRuntime => {
 				const note = await Note.load(noteId);
 				if (!note || isNoteEncrypted(note)) continue;
 				try {
-					const encrypted = await encryptNote(note, password);
-					// changeId prefix 'editorChange-' prevents useRefreshFormNoteOnChange
-					// from treating this save as an external change and triggering a reload
-					// that would overwrite the editor's in-memory decrypted state.
+					const { body, resourceIds } = await ensureExclusiveResourcesForNote(note);
+					let noteWithBody = note;
+					if (body !== note.body) {
+						noteWithBody = await Note.save({
+							id: noteId,
+							body,
+						}, { changeId: 'editorChange-encryptCmd' });
+					}
+
+					await encryptLinkedResourcesForNote(noteWithBody, password, resourceIds);
+					const encrypted = await encryptNote(noteWithBody, password);
 					await Note.save({
 						id: noteId,
 						body: encrypted.body,

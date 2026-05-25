@@ -150,8 +150,8 @@ export default class Resource extends BaseItem {
 		return Setting.value('resourceDirName');
 	}
 
-	public static filename(resource: ResourceEntity, encryptedBlob = false) {
-		return resourceFilename(resource, encryptedBlob);
+	public static filename(resource: ResourceEntity, encryptedBlob = false, perNoteEncrypted = false) {
+		return resourceFilename(resource, encryptedBlob, perNoteEncrypted);
 	}
 
 	public static friendlySafeFilename(resource: ResourceEntity) {
@@ -163,12 +163,16 @@ export default class Resource extends BaseItem {
 		return pathUtils.friendlySafeFilename(title) + (safeExt ? `.${safeExt}` : '');
 	}
 
-	public static relativePath(resource: ResourceEntity, encryptedBlob = false) {
-		return resourceRelativePath(resource, this.baseRelativeDirectoryPath(), encryptedBlob);
+	public static relativePath(resource: ResourceEntity, encryptedBlob = false, perNoteEncrypted = false) {
+		return resourceRelativePath(resource, this.baseRelativeDirectoryPath(), encryptedBlob, perNoteEncrypted);
 	}
 
-	public static fullPath(resource: ResourceEntity, encryptedBlob = false) {
-		return resourceFullPath(resource, this.baseDirectoryPath(), encryptedBlob);
+	public static fullPath(resource: ResourceEntity, encryptedBlob = false, perNoteEncrypted = false) {
+		return resourceFullPath(resource, this.baseDirectoryPath(), encryptedBlob, perNoteEncrypted);
+	}
+
+	public static perNoteEncryptedPath(resource: ResourceEntity) {
+		return this.fullPath(resource, false, true);
 	}
 
 	public static async isReady(resource: ResourceEntity) {
@@ -181,6 +185,10 @@ export default class Resource extends BaseItem {
 		if (!resource) return 'notFound';
 		if (ls.fetch_status !== Resource.FETCH_STATUS_DONE) return 'notDownloaded';
 		if (resource.encryption_blob_encrypted) return 'encrypted';
+		if (resource.is_per_note_encrypted) {
+			const plainPath = this.fullPath(resource);
+			if (!(await this.fsDriver().exists(plainPath))) return 'perNoteEncrypted';
+		}
 		return 'ok';
 	}
 
@@ -467,6 +475,8 @@ export default class Resource extends BaseItem {
 		delete newResource.id;
 		delete newResource.is_shared;
 		delete newResource.share_id;
+		newResource.is_per_note_encrypted = 0;
+		newResource.per_note_encrypted_metadata = '';
 		newResource = await Resource.save({
 			...newResource,
 			...propertyOverrides,
@@ -481,6 +491,16 @@ export default class Resource extends BaseItem {
 		const sourcePath = Resource.fullPath(resource);
 		if (await this.fsDriver().exists(sourcePath)) {
 			await this.fsDriver().copy(sourcePath, Resource.fullPath(newResource));
+		} else {
+			const perNotePath = Resource.perNoteEncryptedPath(resource);
+			if (await this.fsDriver().exists(perNotePath)) {
+				await this.fsDriver().copy(perNotePath, Resource.perNoteEncryptedPath(newResource));
+				newResource = await Resource.save({
+					id: newResource.id,
+					is_per_note_encrypted: resource.is_per_note_encrypted,
+					per_note_encrypted_metadata: resource.per_note_encrypted_metadata,
+				});
+			}
 		}
 
 		return newResource;

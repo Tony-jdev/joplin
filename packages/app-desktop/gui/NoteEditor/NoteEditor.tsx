@@ -61,6 +61,7 @@ import useInitialCursorLocation from './utils/useInitialCursorLocation';
 import NotePositionService, { EditorCursorLocations } from '@joplin/lib/services/NotePositionService';
 import { NoteEntity } from '@joplin/lib/services/database/types';
 import NoteEncryptionLockScreen from './NoteEncryptionLockScreen/NoteEncryptionLockScreen';
+import { ensureResourcesDecryptedForNote, getSessionPassword, reencryptAllSessionResources } from '@joplin/lib/services/encryption/PerNoteEncryptionService';
 
 const debounce = require('debounce');
 
@@ -113,6 +114,10 @@ function NoteEditorContent(props: NoteEditorProps) {
 		setFormNote: setFormNoteRef, dispatch: props.dispatch, editorRef, editorId,
 	});
 	const formNote_beforeLoad = useCallback(async (event: OnLoadEvent) => {
+		const password = getSessionPassword();
+		if (password && event.formNote.is_encrypted === 1) {
+			await reencryptAllSessionResources(password);
+		}
 		await saveNoteIfWillChange(event.formNote);
 		setShowRevisions(false);
 	}, [saveNoteIfWillChange]);
@@ -139,7 +144,12 @@ function NoteEditorContent(props: NoteEditorProps) {
 	const formNoteRef = useRef<FormNote>(formNote);
 	formNoteRef.current = { ...formNote };
 
-	const onPerNoteUnlock = useCallback((decrypted: { title: string; body: string }) => {
+	const onPerNoteUnlock = useCallback(async (decrypted: { title: string; body: string }) => {
+		const password = getSessionPassword();
+		const noteId = formNoteRef.current.id;
+		if (password && noteId) {
+			await ensureResourcesDecryptedForNote(noteId, password, decrypted.body);
+		}
 		setFormNote(prev => ({
 			...prev,
 			title: decrypted.title,

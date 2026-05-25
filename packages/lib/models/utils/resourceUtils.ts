@@ -5,19 +5,22 @@ import { filename } from '@joplin/utils/path';
 // This file contains resource-related utilities that do not
 // depend on the database, settings, etc.
 
-export const resourceFilename = (resource: ResourceEntity, encryptedBlob = false) => {
+export const perNoteEncryptedExtension = 'pnenc';
+
+export const resourceFilename = (resource: ResourceEntity, encryptedBlob = false, perNoteEncrypted = false) => {
+	if (perNoteEncrypted) return `${resource.id}.${perNoteEncryptedExtension}`;
 	let extension = encryptedBlob ? 'crypted' : resource.file_extension;
 	if (!extension) extension = resource.mime ? mime.toFileExtension(resource.mime) : '';
 	extension = extension ? `.${extension}` : '';
 	return resource.id + extension;
 };
 
-export const resourceRelativePath = (resource: ResourceEntity, relativeResourceDirPath: string, encryptedBlob = false) => {
-	return `${relativeResourceDirPath}/${resourceFilename(resource, encryptedBlob)}`;
+export const resourceRelativePath = (resource: ResourceEntity, relativeResourceDirPath: string, encryptedBlob = false, perNoteEncrypted = false) => {
+	return `${relativeResourceDirPath}/${resourceFilename(resource, encryptedBlob, perNoteEncrypted)}`;
 };
 
-export const resourceFullPath = (resource: ResourceEntity, resourceDirPath: string, encryptedBlob = false) => {
-	return `${resourceDirPath}/${resourceFilename(resource, encryptedBlob)}`;
+export const resourceFullPath = (resource: ResourceEntity, resourceDirPath: string, encryptedBlob = false, perNoteEncrypted = false) => {
+	return `${resourceDirPath}/${resourceFilename(resource, encryptedBlob, perNoteEncrypted)}`;
 };
 
 export const internalUrl = (resource: ResourceEntity) => {

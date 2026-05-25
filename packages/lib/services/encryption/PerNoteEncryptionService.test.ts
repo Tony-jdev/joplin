@@ -1,7 +1,10 @@
 import Folder from '../../models/Folder';
 import Note from '../../models/Note';
+import NoteResource from '../../models/NoteResource';
+import Resource from '../../models/Resource';
+import shim from '../../shim';
 import { setupAndEnableEncryption } from '../e2ee/utils';
-import { encryptionService, loadEncryptionMasterKey, setupDatabaseAndSynchronizer, switchClient } from '../../testing/test-utils';
+import { encryptionService, loadEncryptionMasterKey, setupDatabaseAndSynchronizer, supportDir, switchClient } from '../../testing/test-utils';
 import EncryptionService from '../e2ee/EncryptionService';
 import {
 	encryptNote,
@@ -14,6 +17,12 @@ import {
 	setSessionPassword,
 	getLastUnlockedNoteId,
 	setLastUnlockedNoteId,
+	ensureExclusiveResourcesForNote,
+	encryptLinkedResourcesForNote,
+	decryptResourceBlobToPlaintext,
+	ensureResourcesDecryptedForNote,
+	reencryptAllSessionResources,
+	isResourcePerNoteEncrypted,
 } from './PerNoteEncryptionService';
 import { NoteEntity } from '../database/types';
 
@@ -31,11 +40,11 @@ describe('PerNoteEncryptionService', () => {
 		await setupDatabaseAndSynchronizer(1);
 		await switchClient(1);
 		EncryptionService.instance_ = encryptionService();
-		clearPasswordCache();
+		await clearPasswordCache();
 	});
 
-	afterEach(() => {
-		clearPasswordCache();
+	afterEach(async () => {
+		await clearPasswordCache();
 	});
 
 	it('should detect unencrypted notes correctly', () => {
@@ -61,7 +70,7 @@ describe('PerNoteEncryptionService', () => {
 		const note = makeNote();
 		const encrypted = await encryptNote(note, 'password');
 
-		clearPasswordCache();
+		await clearPasswordCache();
 		const decrypted = await decryptNote(encrypted, 'password');
 
 		expect(decrypted.title).toBe(note.title);
@@ -74,7 +83,7 @@ describe('PerNoteEncryptionService', () => {
 		const note = makeNote();
 		const encrypted = await encryptNote(note, 'correct');
 
-		clearPasswordCache();
+		await clearPasswordCache();
 		await expect(decryptNote(encrypted, 'wrong')).rejects.toThrow();
 	});
 
@@ -82,7 +91,7 @@ describe('PerNoteEncryptionService', () => {
 		const note = makeNote();
 		const encrypted = await encryptNote(note, 'pw');
 
-		clearPasswordCache();
+		await clearPasswordCache();
 		const plain = await permanentlyDecryptNote(encrypted, 'pw');
 
 		expect(plain.is_encrypted).toBe(0);
@@ -107,19 +116,19 @@ describe('PerNoteEncryptionService', () => {
 		expect(getSessionPassword()).toBe('per-note-pw');
 	});
 
-	it('clearPasswordCache resets the session password', () => {
+	it('clearPasswordCache resets the session password', async () => {
 		setSessionPassword('temporary');
-		clearPasswordCache();
+		await clearPasswordCache();
 		expect(getSessionPassword()).toBeNull();
 	});
 
-	it('clearPasswordCache resets the last unlocked note ID', () => {
+	it('clearPasswordCache resets the last unlocked note ID', async () => {
 		setSessionPassword('temporary');
 		setLastUnlockedNoteId('note-id');
 
 		expect(getLastUnlockedNoteId()).toBe('note-id');
 
-		clearPasswordCache();
+		await clearPasswordCache();
 
 		expect(getSessionPassword()).toBeNull();
 		expect(getLastUnlockedNoteId()).toBeNull();
@@ -131,7 +140,7 @@ describe('PerNoteEncryptionService', () => {
 		const encA = await encryptNote(noteA, 'pwA');
 		const encB = await encryptNote(noteB, 'pwB');
 
-		clearPasswordCache();
+		await clearPasswordCache();
 		await expect(decryptNote(encA, 'pwB')).rejects.toThrow();
 		await expect(decryptNote(encB, 'pwA')).rejects.toThrow();
 		const da = await decryptNote(encA, 'pwA');
@@ -155,7 +164,7 @@ describe('PerNoteEncryptionService', () => {
 			encrypted_metadata: JSON.stringify({ version: 1, method: EncryptionMethod.StringV1 }),
 		};
 
-		clearPasswordCache();
+		await clearPasswordCache();
 		const decrypted = await decryptNote(legacyEncrypted, 'pw');
 
 		expect(decrypted.title).toBe(note.title);
@@ -196,5 +205,107 @@ describe('PerNoteEncryptionService', () => {
 
 		expect(fullyDecrypted.title).toBe(note.title);
 		expect(fullyDecrypted.body).toBe(note.body);
+	});
+
+	it('should encrypt linked attachment blobs when encrypting a note', async () => {
+		const folder = await Folder.save({ title: 'Encrypt resources folder' });
+		let note = await Note.save({ title: 'With photo', body: 'Hello', parent_id: folder.id });
+		note = await shim.attachFileToNote(note, `${supportDir}/photo.jpg`);
+
+		const { body, resourceIds } = await ensureExclusiveResourcesForNote(note);
+		expect(resourceIds.length).toBe(1);
+
+		await encryptLinkedResourcesForNote({ ...note, body }, 'note-pw', resourceIds);
+		const encrypted = await encryptNote({ ...note, body }, 'note-pw');
+		await Note.save({ ...encrypted, id: note.id });
+
+		const resource = await Resource.load(resourceIds[0]);
+		expect(isResourcePerNoteEncrypted(resource)).toBe(true);
+		expect(await Resource.fsDriver().exists(Resource.perNoteEncryptedPath(resource))).toBe(true);
+		expect(await Resource.fsDriver().exists(Resource.fullPath(resource))).toBe(false);
+	});
+
+	it('should throw on wrong password when decrypting an attachment', async () => {
+		const folder = await Folder.save({ title: 'Wrong pw folder' });
+		let note = await Note.save({ title: 'Photo', body: 'x', parent_id: folder.id });
+		note = await shim.attachFileToNote(note, `${supportDir}/photo.jpg`);
+		const { body, resourceIds } = await ensureExclusiveResourcesForNote(note);
+		await encryptLinkedResourcesForNote({ ...note, body }, 'right', resourceIds);
+		const resource = await Resource.load(resourceIds[0]);
+
+		await expect(decryptResourceBlobToPlaintext(resource, 'wrong')).rejects.toThrow();
+	});
+
+	it('should duplicate a shared resource when encrypting one note', async () => {
+		const folder = await Folder.save({ title: 'Shared res folder' });
+		let note1 = await Note.save({ title: 'Note 1', body: 'A', parent_id: folder.id });
+		note1 = await shim.attachFileToNote(note1, `${supportDir}/photo.jpg`);
+		const resourceId = (await Note.linkedResourceIds(note1.body))[0];
+
+		const note2 = await Note.save({
+			title: 'Note 2',
+			body: note1.body,
+			parent_id: folder.id,
+		});
+		await NoteResource.setAssociatedResources(note1.id, [resourceId]);
+		await NoteResource.setAssociatedResources(note2.id, [resourceId]);
+
+		const { body, resourceIds } = await ensureExclusiveResourcesForNote(note1);
+		expect(resourceIds.length).toBe(1);
+		expect(resourceIds[0]).not.toBe(resourceId);
+		expect(body.includes(resourceIds[0])).toBe(true);
+		expect(body.includes(resourceId)).toBe(false);
+	});
+
+	it('should restore plaintext attachment paths on unlock and re-encrypt on clearPasswordCache', async () => {
+		const folder = await Folder.save({ title: 'Session folder' });
+		let note = await Note.save({ title: 'Session', body: 'Y', parent_id: folder.id });
+		note = await shim.attachFileToNote(note, `${supportDir}/photo.jpg`);
+		const { body, resourceIds } = await ensureExclusiveResourcesForNote(note);
+		await encryptLinkedResourcesForNote({ ...note, body }, 'sess-pw', resourceIds);
+		const encrypted = await encryptNote({ ...note, body }, 'sess-pw');
+		await Note.save({ ...encrypted, id: note.id });
+
+		const decrypted = await decryptNote(encrypted, 'sess-pw');
+		await ensureResourcesDecryptedForNote(note.id, 'sess-pw', decrypted.body || '');
+
+		const resource = await Resource.load(resourceIds[0]);
+		expect(await Resource.fsDriver().exists(Resource.fullPath(resource))).toBe(true);
+
+		await reencryptAllSessionResources('sess-pw');
+		expect(await Resource.fsDriver().exists(Resource.fullPath(resource))).toBe(false);
+		expect(await Resource.fsDriver().exists(Resource.perNoteEncryptedPath(resource))).toBe(true);
+	});
+
+	it('should throw when per-note encrypting an attachment that still requires E2EE', async () => {
+		const folder = await Folder.save({ title: 'E2EE resource folder' });
+		let note = await Note.save({ title: 'E2EE res', body: 'Q', parent_id: folder.id });
+		note = await shim.attachFileToNote(note, `${supportDir}/photo.jpg`);
+		const resourceId = (await Note.linkedResourceIds(note.body))[0];
+
+		await Resource.save({
+			id: resourceId,
+			encryption_applied: 1,
+		});
+
+		await expect(encryptLinkedResourcesForNote(note, 'pw', [resourceId])).rejects.toThrow(/end-to-end encryption/i);
+	});
+
+	it('should permanently decrypt linked attachments when removing note encryption', async () => {
+		const folder = await Folder.save({ title: 'Permanent decrypt folder' });
+		let note = await Note.save({ title: 'Decrypt all', body: 'Z', parent_id: folder.id });
+		note = await shim.attachFileToNote(note, `${supportDir}/photo.jpg`);
+		const { body, resourceIds } = await ensureExclusiveResourcesForNote(note);
+		await encryptLinkedResourcesForNote({ ...note, body }, 'perm', resourceIds);
+		const encrypted = await encryptNote({ ...note, body }, 'perm');
+		await Note.save({ ...encrypted, id: note.id });
+
+		const plain = await permanentlyDecryptNote(encrypted, 'perm');
+		await Note.save({ ...plain, id: note.id });
+
+		const resource = await Resource.load(resourceIds[0]);
+		expect(isResourcePerNoteEncrypted(resource)).toBe(false);
+		expect(await Resource.fsDriver().exists(Resource.perNoteEncryptedPath(resource))).toBe(false);
+		expect(await Resource.fsDriver().exists(Resource.fullPath(resource))).toBe(true);
 	});
 });

@@ -6,6 +6,7 @@ import Note from '@joplin/lib/models/Note';
 import type { Dispatch } from 'redux';
 import eventManager, { EventName } from '@joplin/lib/eventManager';
 import type { OnSetFormNote } from './useFormNote';
+import { encryptNewlyAttachedResourcesIfNeeded, getSessionPassword } from '@joplin/lib/services/encryption/PerNoteEncryptionService';
 
 interface Props {
 	setFormNote: RefObject<OnSetFormNote>;
@@ -43,6 +44,11 @@ const useScheduleSaveCallbacks = (props: Props) => {
 
 				const note = await formNoteToNote(mergedFormNote);
 				const savedNote = await Note.save(note, { changeId: `editorChange-${props.editorId}` });
+
+				if (savedNote.is_encrypted && getSessionPassword()) {
+					const resourceIds = await Note.linkedResourceIds(mergedFormNote.body);
+					await encryptNewlyAttachedResourcesIfNeeded(savedNote, resourceIds);
+				}
 
 				props.setFormNote.current((prev: FormNote) => {
 					// Only update if we are still editing the same note — prevents a
